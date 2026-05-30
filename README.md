@@ -73,7 +73,7 @@ Calculated:
 ---
 
 ## Files Included
-
+* `Dashboard.png` → Dashboard
 * `funnel_analysis.sql` → SQL queries used for analysis
 * `README.md` → Project documentation
 
