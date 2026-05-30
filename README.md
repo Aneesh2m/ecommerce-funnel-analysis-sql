@@ -81,6 +81,4 @@ Calculated:
 
 ## Future Improvements
 
-* Create an interactive dashboard using Excel or Power BI
-* Add visualization for funnel conversion trends
 * Perform cohort and retention analysis
