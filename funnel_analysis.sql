@@ -1,120 +1,138 @@
-select * from ecom.project1;
 
--- Defining Sales Funnel Stages
+-- E-COMMERCE FUNNEL ANALYSIS
 
-with funnel_stages as(
 
- select
- count(distinct case when event_type = "page_view" then user_id end) as stage_1_views,
- count(distinct case when event_type = "add_to_cart" then user_id end) as stage_2_cart,
- count(distinct case when event_type = "checkout_start" then user_id end) as stage_3_checkout,
- count(distinct case when event_type ="payment_info" then user_id end) as stage_4_payment,
- count(distinct case when event_type = "purchase" then user_id end) as stage_5_purchase
- 
- from ecom.project1
- 
+-- 1. FUNNEL STAGE ANALYSIS
+--    How many unique users reach each stage? 
+
+WITH funnel_stages AS (
+    SELECT
+        COUNT(DISTINCT CASE WHEN event_type = 'page_view'      THEN user_id END) AS stage_1_views,
+        COUNT(DISTINCT CASE WHEN event_type = 'add_to_cart'    THEN user_id END) AS stage_2_cart,
+        COUNT(DISTINCT CASE WHEN event_type = 'checkout_start' THEN user_id END) AS stage_3_checkout,
+        COUNT(DISTINCT CASE WHEN event_type = 'payment_info'   THEN user_id END) AS stage_4_payment,
+        COUNT(DISTINCT CASE WHEN event_type = 'purchase'       THEN user_id END) AS stage_5_purchase
+    FROM ecom.project1
 )
- 
-select * from funnel_stages;
- 
- -- conversion rates through the funnel
- 
- with funnel_stages as(
+SELECT * FROM funnel_stages;
 
- select
- count(distinct case when event_type = "page_view" then user_id end) as stage_1_views,
- count(distinct case when event_type = "add_to_cart" then user_id end) as stage_2_cart,
- count(distinct case when event_type = "checkout_start" then user_id end) as stage_3_checkout,
- count(distinct case when event_type ="payment_info" then user_id end) as stage_4_payment,
- count(distinct case when event_type = "purchase" then user_id end) as stage_5_purchase
- 
- from ecom.project1
- )
 
-select 
- 
- stage_1_views,
- stage_2_cart,
- round(stage_2_cart * 100 / stage_1_views) as view_to_cart_rate,
- 
- stage_3_checkout,
- round(stage_3_checkout * 100 / stage_2_cart) as cart_to_checkout_rate,
- 
- stage_4_payment,
- round(stage_4_payment * 100 / stage_3_checkout) as checkout_to_payment_rate,
- 
- stage_5_purchase,
- round(stage_5_purchase * 100 / stage_4_payment) as payment_to_purchase_rate,
- 
- round(stage_5_purchase * 100 / stage_1_views) as overall_conversion_rate
- 
- from funnel_stages;
- 
- 
- -- funnel by source
- 
- with source_funnel as (
-  select
-     traffic_source,
-	 count(distinct case when event_type = "page_view" then user_id end) as views,
-	 count(distinct case when event_type = "add_to_cart" then user_id end) as carts,
-	 count(distinct case when event_type = "purchase" then user_id end) as purchases
-   	 
-  from ecom.project1
-  group by traffic_source
- 
- )
 
-select 
-	traffic_source, views, carts, purchases, 
-	round(carts * 100/ views) as cart_conversion_rate,
-    round(purchases * 100/ carts) as cart_to_purchase_conversion_rate,
-    round(purchases * 100/ views) as purchase_conversion_rate
+-- 2. CONVERSION RATE ANALYSIS
+--    Step-by-step drop-off rates through the funnel
 
-from source_funnel    
-order by purchases desc;    
-
--- time to conversion analysis
-
-with user_journey as (
-  select
-     user_id,
-	 min(case when event_type = "page_view" then event_date end) as view_time,
-	 min(case when event_type = "add_to_cart" then event_date end) as cart_time,
-	 min(case when event_type = "purchase" then event_date end) as purchase_time
-   	 
-  from ecom.project1
-  group by user_id
-  having min(case when event_type = "purchase" then event_date end) is not null
- )
-
-select count(*) AS converted_users,
-    round(avg(timestampdiff(minute, view_time, cart_time)),2) as avg_view_to_cart_minutes,
-    round(avg(timestampdiff(minute, cart_time, purchase_time)),2) as avg_cart_to_purchase_minutes,
-    round(avg(timestampdiff(minute, view_time, purchase_time)),2) as avg_total_journey_minutes
-
-from user_journey;
- 
--- revenue funnel analysis
-
-with revenue_funnel as (
-  select
-	 count(distinct case when event_type = "page_view" then user_id end) as total_visitors,
-	 count(distinct case when event_type = "add_to_cart" then user_id end) as total_buyers,
-	 round(sum(case when event_type = "purchase" then amount end))as total_revenue,
-   	 count(distinct case when event_type = "purchase" then 1 end) as total_orders
-     
-  from ecom.project1
-  
+WITH funnel_stages AS (
+    SELECT
+        COUNT(DISTINCT CASE WHEN event_type = 'page_view'      THEN user_id END) AS stage_1_views,
+        COUNT(DISTINCT CASE WHEN event_type = 'add_to_cart'    THEN user_id END) AS stage_2_cart,
+        COUNT(DISTINCT CASE WHEN event_type = 'checkout_start' THEN user_id END) AS stage_3_checkout,
+        COUNT(DISTINCT CASE WHEN event_type = 'payment_info'   THEN user_id END) AS stage_4_payment,
+        COUNT(DISTINCT CASE WHEN event_type = 'purchase'       THEN user_id END) AS stage_5_purchase
+    FROM ecom.project1
 )
- 
- select
-	total_visitors,total_buyers,total_revenue,total_orders,
-	round(total_revenue / total_orders) as avg_order_value,
-    round(total_revenue / total_buyers) as revenue_per_buyer, 
-    round(total_revenue / total_visitors) as revenue_per_visitor
- 
- from revenue_funnel;
-  
-  
+SELECT
+    stage_1_views,
 
+    stage_2_cart,
+    ROUND(stage_2_cart * 100.0 / stage_1_views, 2)       AS view_to_cart_rate,
+
+    stage_3_checkout,
+    ROUND(stage_3_checkout * 100.0 / stage_2_cart, 2)    AS cart_to_checkout_rate,
+
+    stage_4_payment,
+    ROUND(stage_4_payment * 100.0 / stage_3_checkout, 2) AS checkout_to_payment_rate,
+
+    stage_5_purchase,
+    ROUND(stage_5_purchase * 100.0 / stage_4_payment, 2) AS payment_to_purchase_rate,
+
+    ROUND(stage_5_purchase * 100.0 / stage_1_views, 2)   AS overall_conversion_rate
+FROM funnel_stages;
+
+
+
+-- 3. CHANNEL PERFORMANCE ANALYSIS
+--    Which traffic source drives the most efficient conversions?
+
+WITH source_funnel AS (
+    SELECT
+        traffic_source,
+        COUNT(DISTINCT CASE WHEN event_type = 'page_view'   THEN user_id END) AS views,
+        COUNT(DISTINCT CASE WHEN event_type = 'add_to_cart' THEN user_id END) AS carts,
+        COUNT(DISTINCT CASE WHEN event_type = 'purchase'    THEN user_id END) AS purchases
+    FROM ecom.project1
+    GROUP BY traffic_source
+)
+SELECT
+    traffic_source,
+    views,
+    carts,
+    purchases,
+    ROUND(carts     * 100.0 / views, 2) AS view_to_cart_rate,
+    ROUND(purchases * 100.0 / carts, 2) AS cart_to_purchase_rate,
+    ROUND(purchases * 100.0 / views, 2) AS overall_channel_conversion_rate
+FROM source_funnel
+ORDER BY overall_channel_conversion_rate DESC;  
+
+
+-- 4. TIME-TO-CONVERSION ANALYSIS
+--    How long does it take users to move through the funnel?
+
+WITH user_journey AS (
+    SELECT
+        user_id,
+        MIN(CASE WHEN event_type = 'page_view'   THEN event_date END) AS view_time,
+        MIN(CASE WHEN event_type = 'add_to_cart' THEN event_date END) AS cart_time,
+        MIN(CASE WHEN event_type = 'purchase'    THEN event_date END) AS purchase_time
+    FROM ecom.project1
+    GROUP BY user_id
+    HAVING MIN(CASE WHEN event_type = 'purchase' THEN event_date END) IS NOT NULL
+)
+SELECT
+    COUNT(*) AS converted_users,
+    ROUND(AVG(TIMESTAMPDIFF(MINUTE, view_time, cart_time)), 2) AS avg_view_to_cart_minutes,
+    ROUND(AVG(TIMESTAMPDIFF(MINUTE, cart_time, purchase_time)), 2) AS avg_cart_to_purchase_minutes,
+    ROUND(AVG(TIMESTAMPDIFF(MINUTE, view_time, purchase_time)), 2) AS avg_total_journey_minutes,
+    SUM(CASE WHEN TIMESTAMPDIFF(MINUTE, view_time, purchase_time) <= 30  THEN 1 ELSE 0 END) AS converted_within_30_min,
+    SUM(CASE WHEN TIMESTAMPDIFF(MINUTE, view_time, purchase_time) <= 60  THEN 1 ELSE 0 END) AS converted_within_1_hr,
+    SUM(CASE WHEN TIMESTAMPDIFF(MINUTE, view_time, purchase_time) >  60  THEN 1 ELSE 0 END) AS converted_after_1_hr
+FROM user_journey;
+
+
+
+-- 5. REVENUE FUNNEL ANALYSIS
+
+WITH revenue_funnel AS (
+    SELECT
+        COUNT(DISTINCT CASE WHEN event_type = 'page_view' THEN user_id END) AS total_visitors,
+        COUNT(DISTINCT CASE WHEN event_type = 'purchase'  THEN user_id END) AS total_buyers,
+        ROUND(SUM(CASE WHEN event_type = 'purchase' THEN  amount END), 2) AS total_revenue,
+        COUNT(DISTINCT CASE WHEN event_type = 'purchase' THEN event_id END) AS total_orders
+    FROM ecom.project1
+)
+SELECT
+    total_visitors,
+    total_buyers,
+    total_revenue,
+    total_orders,
+    ROUND(total_revenue / total_orders,   2) AS avg_order_value,
+    ROUND(total_revenue / total_buyers,   2) AS revenue_per_buyer,
+    ROUND(total_revenue / total_visitors, 2) AS revenue_per_visitor
+FROM revenue_funnel;
+
+
+
+-- 6. BONUS: REVENUE BY CHANNEL
+--    Which channel generates the most revenue per visitor?
+
+SELECT
+    traffic_source,
+    COUNT(DISTINCT CASE WHEN event_type = 'page_view' THEN user_id END) AS visitors,
+    COUNT(DISTINCT CASE WHEN event_type = 'purchase'  THEN user_id END) AS buyers,
+    ROUND(SUM(CASE WHEN event_type = 'purchase' THEN amount  END), 2)  AS total_revenue,
+    ROUND(SUM(CASE WHEN event_type = 'purchase' THEN amount END) /
+          NULLIF(COUNT(DISTINCT CASE WHEN event_type = 'purchase' THEN user_id END), 0), 2)  AS avg_order_value,
+    ROUND(SUM(CASE WHEN event_type = 'purchase' THEN amount END) /
+          NULLIF(COUNT(DISTINCT CASE WHEN event_type = 'page_view' THEN user_id END), 0), 2) AS revenue_per_visitor
+FROM ecom.project1
+GROUP BY traffic_source
+ORDER BY revenue_per_visitor DESC;
