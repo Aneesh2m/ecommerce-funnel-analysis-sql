@@ -121,8 +121,7 @@ FROM revenue_funnel;
 
 
 
--- 6. 
-REVENUE BY CHANNEL
+-- 6. REVENUE BY CHANNEL
 --    Which channel generates the most revenue per visitor?
 
 SELECT
